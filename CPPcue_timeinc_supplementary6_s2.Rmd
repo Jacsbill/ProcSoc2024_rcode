@@ -1,0 +1,161 @@
+---
+title: "supplementary 6 analysis"
+author: "jac"
+date: "2024-05-26"
+output: html_document
+---
+
+
+Extracted in time increments from cue locked trials
+              "p300_1"   = 0-0.0490 cue locked.  
+        "p300_2"   = 0.0500-0.0990
+        etc.
+        "p300_53"  =    2.6000-2.6490
+        
+        cfg.channel     = {'Cpz','Pz''}; 
+        cfg.baseline    = [-0.1 -0.00001]; %%% baseline corrected
+        
+load data
+```{r include=FALSE, results='hide'}
+rmarkdown::render("loadlibraries_s2.Rmd")
+
+rm(list = ls(pattern = "\\model"))  ###remove previous models
+rm(list = ls(pattern = "^data")) ### c
+rm(list = ls(pattern = "^mu")) ### c
+rm(list = ls(pattern = "^dp")) ### c
+rm(list = ls(pattern = "^plot")) ### c
+rm(list = ls(pattern = "^df")) ### c
+
+data<-readr::read_csv("cpp_fromcue_timeinc.csv") ##with baseline
+
+
+
+
+
+
+```
+
+change class info and normalise some parameters.
+```{r include=FALSE, results='hide'}
+
+
+
+center_scale <- function(x) {scale(x, scale = TRUE)}
+
+# apply it
+data$edgedisCS<-c(center_scale(data$edgedis))
+data$logRT=log1p(data$responsetime)
+
+
+```
+
+
+
+```{r}
+# significant time period F data for paper- cluster level correction used from monte carlo below (also see matlab code). this worked out the average f across all the time period 
+
+
+data$Ave2<-NA
+data$Ave2<-rowMeans(data[,c(12+8, 16+8)])    
+data$csAve2<-c(center_scale(data$Ave2))
+model.a=lmer(csAve2 ~   certain2*correct2    + (1|ParticipantPrivateID), data=data,REML = FALSE);
+summary(model.a)
+anova(model.a)
+confint(model.a)
+
+  
+  data$Ave3<-NA
+ data$Ave3<-rowMeans(data[,c(24+8, 26+8)])    
+data$csAve3<-c(center_scale(data$Ave3))
+model.b=lmer(csAve3 ~   certain2*correct2    + (1|ParticipantPrivateID), data=data,REML = FALSE);
+ summary(model.b)
+  anova(model.b)
+  confint(model.a)
+```
+
+
+time inc for certainty predicting CPZ PZ response supplementary
+running montecarlo.... exported to matlab and did cluster stats there.
+overall it found that two time zones were significant and over 2 increments (cluster corrected). Actual models for those periods above. 
+```{r eval=FALSE, include=FALSE}
+#As per .Tagliabue
+
+pkg <- "package:lmerTest"
+
+#detach(pkg, character.only = TRUE)
+
+data$cer<-c(center_scale(data$certain))
+
+#create empty dataframe
+df <- data.frame(t=double(),
+                 certL=double(),
+                 certQ=double(),
+                 corr=double(),
+                 Cl_C=double(),
+                 cL_C=double(),
+                 certL_p=double(),
+                 certQ_p=double(),
+                 corr_p=double(),
+                 Cl_C_p=double(),
+                 cL_C_p=double(),
+                certL_t=double(),
+                 certQ_t=double(),
+                 corr_t=double(),
+                 Cl_C_t=double(),
+                 cL_C_t=double())
+
+df2 <- data.frame(t=double(),
+                 certL=double(),
+                 certQ=double(),
+                 corr=double(),
+                 Cl_C=double(),
+                 cL_C=double(),
+                 certL_p=double(),
+                 certQ_p=double(),
+                 corr_p=double(),
+                 Cl_C_p=double(),
+                 cL_C_p=double(),
+                certL_t=double(),
+                 certQ_t=double(),
+                 corr_t=double(),
+                 Cl_C_t=double(),
+                 cL_C_t=double())
+
+library(lmerTest)
+#  for (ii in 666:1000) {
+#  for (i in 1:33) {
+#    data$csAve<-c(center_scale(data[i+8]))
+#    data$csAveR <- sample(data$csAve, length(data$csAve))
+#   fit.dv=lmer(csAveR ~   certain2*correct2    + (1|ParticipantPrivateID), data=data,REML = FALSE);
+#   sm=summary(fit.dv)
+#   smc=sm[["coefficients"]]
+# 
+#    df[i,1]=(i*0.05)-0.025
+#    df[i,2]=fit.dv@pp$delb[2]
+#    df[i,3]=fit.dv@pp$delb[3]
+#    df[i,4]=fit.dv@pp$delb[4]
+#     df[i,5]=fit.dv@pp$delb[5]
+#    df[i,6]=fit.dv@pp$delb[6]
+#    df[i,7]=smc[2,5]
+#    df[i,8]=smc[3,5]
+#    df[i,9]=smc[4,5]
+#    df[i,10]=smc[5,5]
+#    df[i,11]=smc[6,5]
+#     df[i,12]=smc[2,4]
+#    df[i,13]=smc[3,4]
+#    df[i,14]=smc[4,4]
+#    df[i,15]=smc[5,4]
+#    df[i,16]=smc[6,4]
+#  }
+#    df2 <- rbind(df2, df)
+#  }
+# write.csv(df2,"C:/levEEGanalysis/main/paper_results_code/DRAFTS/finalR_07072022/MOnTECARLO_CSave1a.csv")
+
+## saved as 'MOnTECARLO_CSave1a' and 'MOnTECARLO_CSave1' = sums to 1000 iterations. 
+## cluster stats in MOnTECARLO_CSave_anal.m
+
+
+```
+
+
+

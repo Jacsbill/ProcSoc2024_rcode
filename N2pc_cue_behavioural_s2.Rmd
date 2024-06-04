@@ -1,0 +1,252 @@
+---
+title: "behavioural measures and n2pc to cue"
+author: "jac"
+date: "2024-05-26"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+Data extracted from fieldtrip cue locked files:
+        cfg.channel     = {'PO3','PO7','O1'}; and  cfg.channel     = {'PO4','PO8','O2'};
+        cfg.baseline    = [-0.1 -0.00001]; %%% baseline corrected
+        
+
+```{r include=FALSE}
+
+rmarkdown::render("loadlibraries_s2.Rmd")
+
+rm(list = ls(pattern = "\\model"))  ###remove previous models
+rm(list = ls(pattern = "^data")) ### c
+rm(list = ls(pattern = "^mu")) ### c
+rm(list = ls(pattern = "^dp")) ### c
+rm(list = ls(pattern = "^plot")) ### c
+
+data<-readr::read_csv("behavioural_cuen2pc.csv") 
+
+
+factor(data$subj)
+
+
+#centre scale edgedis
+center_scale <- function(x) {scale(x, scale = TRUE)}
+data$edgedisCS<-c(center_scale(data$edgedis))
+
+#logRT
+data$logRT=log1p(data$responsetime)
+
+```
+
+# create laterality index for N2pc (i.e. flip according to cue side)
+```{r include=FALSE}
+
+## create laterality index (N2pc)
+
+data <-data %>% 
+        mutate(Latindex=ifelse(sidecue==0,RightN2pc-LeftN2pc,NA)) %>% 
+        mutate(Latindex=ifelse(sidecue==1,LeftN2pc-RightN2pc,Latindex))
+
+
+data$csLeftN2pc<-c(center_scale(data$LeftN2pc))
+data$csRightN2pc<-c(center_scale(data$RightN2pc))
+data$csAveN2pc<-c(center_scale(data$AveN2pc))
+data$csLatindex<-c(center_scale(data$Latindex))
+hist(data$csLatindex)
+
+data <-data %>% 
+        mutate(RTcat=ifelse(responsetime>=0.9,1,NA)) %>% 
+        mutate(RTcat=ifelse(responsetime<0.9,0,RTcat))
+```
+
+```{r} 
+
+####function from https://doi.org/10.3389/fpsyg.2015.01171
+invfn <- function() {
+    ## link
+    linkfun <- function(y) -1000/y
+    ## inverse link
+    linkinv <- function(eta)  -1000/eta
+    ## derivative of invlink wrt eta
+    mu.eta <- function(eta) { 1000/(eta^2) }
+    valideta <- function(eta) TRUE
+    link <- "-1000/y"
+    structure(list(linkfun = linkfun, linkinv = linkinv,
+                   mu.eta = mu.eta, valideta = valideta, 
+                   name = link),
+              class = "link-glm")
+}
+
+```
+
+
+
+
+# behavioural data
+```{r}
+pick=data$correct2=="correct" #pick the correct data
+dataC=data[pick,]
+
+# responsetime time - submission 1 - not used. 
+#model.RT=lmer(responsetime ~ cueV+edgedisCS*texrot+  (1|subj), data=dataC, REML = FALSE);
+
+
+
+# responsetime time using glmm as requested by reviewer. BEST FIT - used for paper 26/05/2024
+model.RTRR2=glmer(responsetime ~ cueV+edgedisCS*texrot+  (1|subj), data=dataC,family=inverse.gaussian(link = "identity"));
+
+
+# responsetime time using glmm as requested by reviewer. 
+
+#model.RTRR=glmer(responsetime ~ cueV+edgedisCS*texrot+  (1|subj), data=dataC,family=Gamma(link = "identity"));
+
+# reponsetime time using glmm as requested by reviewer. 
+#model.RTRR3=glmer(responsetime ~ cueV+edgedisCS*texrot+  (1|subj), data=dataC,family=Gamma(link = invfn()));
+
+# reponsetime time using glmm as requested by reviewer. won't fit at all. 
+#model.RTRR4=glmer(responsetime ~ cueV+edgedisCS*texrot+  (1|subj), data=dataC,family=inverse.gaussian(link = invfn()));
+
+
+
+
+# accuracy
+model.ACC=glmer(correct ~ cueV+edgedisCS*texrot+  (1|subj), data=data,family=binomial(link = "logit"));
+
+
+#certainty
+data$certain2 <- ordered (data$certain2, levels = c("guess","unsure","certain"))
+model.CERT=multinom(certain2 ~ cueV + edgedisCS*texrot, random =~1|subj, data=data) 
+
+
+```
+
+#N2pc reponse to the cue
+```{r}
+model.LI=lmer(csLatindex ~ edgedisCS*texrot+  (1|subj), data=data, REML = FALSE);
+
+#cert and correct model
+model.lat_CerCor=lmer(csLatindex ~  certain2*correct2  + (1|subj), data=data, REML = FALSE);
+```
+
+#submission 2 behavioral section and N2pc
+```{r}
+
+
+
+# model redone as per reviewer request. see below 
+#summary(model.RT)
+#anova(model.RT, type=3)
+
+# reaction time model 
+summary(model.RTRR2)
+confint(model.RTRR2,method="Wald")
+Anova(model.RTRR2, type=2)
+
+
+
+# accuracy model
+summary(model.ACC)
+confint(model.ACC,method="Wald")
+Anova(model.ACC, type=2) 
+
+#ODDS ratios cueVincong
+exp(summary(model.ACC)$coefficients["cueVincong",1] + qnorm(c(0.025,0.5,0.975)) * summary(model.ACC)$coefficients["cueVincong",2])
+
+#ODDS ratios edgedisCS
+exp(summary(model.ACC)$coefficients["edgedisCS",1] + qnorm(c(0.025,0.5,0.975)) * summary(model.ACC)$coefficients["edgedisCS",2])
+
+#certainty
+summary(model.CERT)
+mtable(model.CERT)
+Anova(model.CERT, type=2)
+confint(model.CERT,method="Wald")
+
+### N2pc
+summary(model.LI)
+anova(model.LI,type=3) # no interaction, use type 3
+summary(model.LI)$coeffcients
+
+# certainty and accuracy predicting N2pc
+summary(model.lat_CerCor)
+anova(model.lat_CerCor,type=3)
+summary(model.lat_CerCor)$coef
+
+
+
+```
+
+
+mediation for cue N2pc 
+```{r}
+data$cer<-c(center_scale(data$certain))
+library(lmerTest) 
+pkg <- "package:lmerTest"
+detach(pkg, character.only = TRUE)  # remove else mediation won't work
+
+data$texrot=factor(data$texrot, levels=c("deg0","deg45","deg90"), order=FALSE)
+ fit.mediator=lmer(cer ~ edgedisCS*texrot  + (1|subj), data=data,REML = FALSE);
+ fit.totaleffect=lmer(csLatindex ~ edgedisCS*texrot     + (1|subj), data=data,REML = FALSE);
+ fit.dv=lmer(csLatindex ~ edgedisCS*texrot + cer    + (1|subj), data=data,REML = FALSE);
+ results = mediation::mediate(fit.mediator, fit.dv, treat="edgedisCS",   mediator="cer")
+
+ library(lmerTest) # add back for full summaries/ anova info
+ fit.mediator2=lmer(cer ~ edgedisCS*texrot  + (1|subj), data=data,REML = FALSE);
+ fit.totaleffect2=lmer(csLatindex ~ edgedisCS*texrot     + (1|subj), data=data,REML = FALSE);
+ fit.dv2=lmer(csLatindex ~ edgedisCS*texrot + cer    + (1|subj), data=data,REML = FALSE);
+
+```
+
+```{r}
+
+# mediation for cue N2pc 
+summary(results)
+summary(fit.mediator) #edgedis - path a
+anova(fit.mediator2)
+summary(fit.dv) # certain - path b
+anova(fit.dv2)
+summary(fit.totaleffect) # edgedis total effect - path c
+anova(fit.totaleffect2)
+
+```
+
+
+Model comparisons - example. We considered models other that our hypothesised EdgeDis*TexRot interaction for completeness. this included - no TexRot in model, no interaction effect. 
+```{r echo=TRUE}
+
+
+#responsetime time using glmm as requested by reviewer. 
+#full model
+#BEST FIT - used for paper 26/05/2024 -AIC  62949.2 
+model.RTRR2=glmer(responsetime ~ cueV+edgedisCS*texrot+  (1|subj), data=dataC,family=inverse.gaussian(link = "identity"));
+
+
+#AIC - 62953.0 - no TexRot
+model.RTRR4=glmer(responsetime ~ cueV+texrot+  (1|subj), data=dataC,family=inverse.gaussian(link = "identity"));
+
+#AIC - 62955.2 - no interaction.
+model.RTRR6=glmer(responsetime ~ cueV+edgedisCS+texrot+  (1|subj), data=dataC,family=inverse.gaussian(link = "identity"));
+
+# would not converge- maxmodel
+#model.RTRR_full=glmer(responsetime ~ cueV+edgedisCS*texrot+  #(edgedisCS*texrot|subj), data=dataC,family=inverse.gaussian(link =# "identity"));
+
+# AIC  16355.0 - model used
+model.LI=lmer(csLatindex ~ edgedisCS*texrot+  (1|subj), data=data, REML = FALSE);
+
+#AIC  16352.0
+# exp((6355.0 - 16352.0)/2) =0 
+# 0 probablity of imporving model. 
+model.LI2=lmer(csLatindex ~ edgedisCS+texrot+  (1|subj), data=data, REML = FALSE);
+
+
+#AIC  1 16349.0
+# exp((6355.0 - 16349.0)/2) =0 
+# 0 probablity of imporving model. 
+model.LI3=lmer(csLatindex ~ edgedisCS+  (1|subj), data=data, REML = FALSE);
+
+# would not fit. 
+#model.LI4=lmer(csLatindex ~ edgedisCS*texrot+  (edgedisCS*texrot|subj), data=data, REML = FALSE);
+
+```
+
+
+
+

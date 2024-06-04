@@ -1,0 +1,44 @@
+---
+title: "Read me"
+author: "jac"
+date: "2024-05-26"
+output: html_document
+---
+
+
+The lines below are relevant to the Proceedings of the Royal Society submission June 2024.
+File contain relevant code and output 
+Files upload data files extracted from Fieldtrip.
+See individual files for more detail. 
+
+
+R code and output for results:
+
+
+Behavioral results and predictions of N2pc from EdgeDis;
+Mediation; 
+Include details of model checking (end of file). 
+```{r eval=FALSE, include=TRUE}
+rmarkdown::render("N2pc_cue_behavioural_s2.Rmd")
+```
+
+
+Predictions of CPP following the target; 
+Mediation;
+```{r eval=FALSE, include=TRUE}
+rmarkdown::render("targetCPP_s2.Rmd")
+```
+
+
+Predictions of N2/ SPCN time increment analysis 
+```{r eval=FALSE, include=TRUE}
+rmarkdown::render("N2_timeincrements_analysis_s2.Rmd")
+```
+
+
+Supplementary 6 analysis
+```{r eval=FALSE, include=TRUE}
+rmarkdown::render("CPPcue_timeinc_supplementary5_s2.Rmd")
+```
+
+

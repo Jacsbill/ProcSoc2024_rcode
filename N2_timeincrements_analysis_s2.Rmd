@@ -1,0 +1,142 @@
+---
+title: "Npc timeincrement data"
+author: "jb"
+date: "2024-05-26"
+output: html_document
+---
+
+Extracted in time increments from cue locked trials
+        "Locc_1"   = 0-0.0490 cue locked.  
+        "Locc_2"   = 0.0500-0.0990
+        etc.
+        "Rocc_53"  =    2.6000-2.6490
+        same for Rocc
+        
+        cfg.channel     = {'PO3','PO7','O1'}; and  cfg.channel     = {'PO4','PO8','O2'}
+        cfg.baseline    = [-0.1 -0.00001]; %%% baseline corrected
+        
+```{r}
+rmarkdown::render("loadlibraries_s2.Rmd")
+
+rm(list = ls(pattern = "\\model"))  ###remove previous models
+rm(list = ls(pattern = "^data")) ### c
+rm(list = ls(pattern = "^mu")) ### c
+rm(list = ls(pattern = "^dp")) ### c
+rm(list = ls(pattern = "^plot")) ### c
+rm(list = ls(pattern = "^df")) ### c
+
+data<-readr::read_csv("occipital_timeinc.csv",show_col_types = FALSE) 
+
+colnames(data)
+```
+
+```{r}
+#centering
+center_scale <- function(x) {scale(x, scale = TRUE)}
+
+# apply it
+data$edgedisCS<-c(center_scale(data$edgedis))
+
+data$logRT=log1p(data$responsetime)
+data$cer<-c(center_scale(data$certain))
+```
+
+run mediation across all times.  
+```{r}
+# pkg <- "package:lmerTest"
+# library(lmerTest)
+# detach(pkg, character.only = TRUE)
+
+# #create empty dataframe
+# df <- data.frame(t=double(),
+#                  c_slope=double(),
+#                  c_slope_p=double(),
+#                  dv_eff=double(),
+#                  ACME=double(),
+#                  ADE=double(),
+#                  TE=double(),
+#                  PropMA=double(),
+#                  ACME_p=double(),
+#                  ADE_p=double(),
+#                  TE_p=double(),
+#                  PropMA_p=double(),
+#                  stringsAsFactors=FALSE)
+# for (i in 1:53) {
+#       data$L=data[[i+8]]
+#       data$R=data[[i+8+53]]
+# data <-data %>%
+#       mutate(Latindex=ifelse(sidecue==0,data$R-data$L,NA)) %>%
+#       mutate(Latindex=ifelse(sidecue==1,data$L-data$R,Latindex))
+#       data$csLatindex<-c(center_scale(data$Latindex))
+#       library(lmerTest)
+#       fit.mediator=lmer(cer ~ edgedisCS*texrot  + (1|subj), data=data,REML = FALSE);
+#       fit.totaleffect=lmer(csLatindex ~ edgedisCS*texrot     + (1|subj), data=data,REML = FALSE);
+#       fit.dv=lmer(csLatindex ~ edgedisCS*texrot + cer    + (1|subj), data=data,REML = FALSE);
+#       sm=summary(fit.dv)
+#       smc=sm[["coefficients"]]
+#       sm2=summary(fit.totaleffect)
+#       smc2=sm2[["coefficients"]]
+#       df[i,1]=(i*0.05)-0.025
+#       df[i,2]=fit.totaleffect@pp$delb[2]
+#       df[i,3]=smc2[2,5]
+#       df[i,4]=0
+#       detach(pkg, character.only = TRUE)
+#       fit.mediator=lmer(cer ~ edgedisCS*texrot  + (1|subj), data=data,REML = FALSE);
+#       fit.totaleffect=lmer(csLatindex ~ edgedisCS*texrot     + (1|subj), data=data,REML = FALSE);
+#       fit.dv=lmer(csLatindex ~ edgedisCS*texrot + cer    + (1|subj), data=data,REML = FALSE);
+# results = mediation::mediate(fit.mediator, fit.dv, treat="edgedisCS",   mediator="cer")
+# summary(results)
+#       df[i,5]=results$d0  #ACME
+#       df[i,6]=results$z0  #ADE
+#       df[i,7]=results$tau.coef   #total effect
+#       df[i,8]=results$n0   #prop mediated
+#       df[i,9]=results$d0.p
+#       df[i,10]=results$z0.p
+#       df[i,11]=results$tau.p
+#       df[i,12]=results$n0.p
+# }
+# write.csv(df,"C:/levEEGanalysis/main/paper_results_code/DRAFTS/finalR_07072022/N2timeinc_results_meds.csv")
+
+df<-readr::read_csv("N2timeinc_results_meds.csv",show_col_types = FALSE) 
+```
+
+```{r}
+### later mediation
+      pkg <- "package:lmerTest"
+    library(lmerTest)
+      data$L=rowMeans(data[,c(17+8, 18+8, 19+8, 20+8, 21+8)])  
+      data$R=rowMeans(data[,c(17+8+53, 18+8+53, 19+8+53, 20+8+53, 21+8+53)])  
+      data <-data %>%
+      mutate(Latindex=ifelse(sidecue==0,data$R-data$L,NA)) %>%
+      mutate(Latindex=ifelse(sidecue==1,data$L-data$R,Latindex))
+      data$csLatindex<-c(center_scale(data$Latindex))
+
+    
+      detach(pkg, character.only = TRUE)
+      fit.mediator=lmer(cer ~ edgedisCS*texrot  + (1|subj), data=data,REML = FALSE);
+      fit.totaleffect=lmer(csLatindex ~ edgedisCS*texrot     + (1|subj), data=data,REML = FALSE);
+      fit.dv=lmer(csLatindex ~ edgedisCS*texrot + cer    + (1|subj), data=data,REML = FALSE);
+      results = mediation::mediate(fit.mediator, fit.dv, treat="edgedisCS",   mediator="cer")
+summary(results)
+
+library(lmerTest)
+fit.mediator=lmer(cer ~ edgedisCS*texrot  + (1|subj), data=data,REML = FALSE);
+      fit.totaleffect=lmer(csLatindex ~ edgedisCS*texrot     + (1|subj), data=data,REML = FALSE);
+      fit.dv=lmer(csLatindex ~ edgedisCS*texrot + cer    + (1|subj), data=data,REML = FALSE);
+      
+      
+summary(fit.mediator)  #- path a
+anova(fit.mediator)
+confint(fit.mediator)
+
+summary(fit.totaleffect)  #path c
+anova(fit.totaleffect)
+
+
+summary(fit.dv)  # path b
+anova(fit.dv)
+confint(fit.dv)
+
+
+```
+

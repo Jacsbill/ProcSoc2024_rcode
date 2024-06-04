@@ -1,0 +1,133 @@
+---
+title: "N2pc following target"
+author: "jb"
+date: '2024-05-26'
+output: html_document
+---
+
+
+load data 
+```{r include=FALSE, results='hide'}
+
+rmarkdown::render("loadlibraries_s2.Rmd")
+
+rm(list = ls(pattern = "\\model"))  ###remove previous models
+rm(list = ls(pattern = "^data")) ### c
+rm(list = ls(pattern = "^mu")) ### c
+rm(list = ls(pattern = "^dp")) ### c
+rm(list = ls(pattern = "^plot")) ### c
+
+data<-readr::read_csv("targetn2pc.csv") ##with baseline
+
+
+
+data$LeftN2pc=data$N2pcTLocc
+data$RightN2pc=data$N2pcTRocc
+data$AveN2pc=(data$N2pcTLocc+data$N2pcTRocc)/2
+
+
+```
+
+change class info and normalise some parameters.
+```{r include=FALSE, results='hide'}
+
+data$correct=abs(data$UDcuecong-data$response)
+data$correct=replace(data$correct, data$correct==5, 1)
+data$correct=replace(data$correct, data$correct==6, 1)
+data$correct=replace(data$correct, data$correct==-1, 1)
+data$certain=replace(data$certain, data$certain<=49, 49)
+data$certain=replace(data$certain, data$certain>=51, 51)
+data$newcertain=data$certain
+data$newcertain=replace(data$newcertain, data$newcertain<=50, 49)
+data$correct2=data$correct
+data$correct=factor(data$correct, labels=c("incorrect","correct"), order=FALSE)
+data$sidecue2=factor(data$sidecue, labels=c("left","right"), order=FALSE)
+data$rotcat2=factor(data$rotcat, labels=c("deg0","deg45","deg90"))
+data$rotcat2=factor(data$rotcat2, order=FALSE, levels=c("deg0","deg45","deg90"))
+data$certain2=factor(data$certain, labels=c("guess","unsure","certain"))
+data$certain2=factor(data$certain2, order=TRUE,   levels=c("guess","unsure","certain"))
+data$newcertain2=factor(data$newcertain, labels=c("guess","certain"))
+data$newcertain2=factor(data$newcertain2, order=TRUE,   levels=c("guess","certain"))
+data$cuecong2=factor(data$cuecong, labels=c("cong","incong"), order=FALSE)
+data$hmaxcat2=factor(data$hmaxcat, labels=c("low","med","high"))
+data$hmaxcat2=factor(data$hmaxcat2, order=TRUE, levels=c("low","med","high"))
+data$corrperc=data$correct2*100
+data$orimatch=data$sidecue
+
+
+data$ParticipantPrivateID=factor(data$subj)
+## centre hmax and canny
+# centering with 'scale()'
+center_scale <- function(x) {scale(x, scale = TRUE)}
+normalise <- function(x){
+(x-min(x))/(max(x)-min(x))
+}
+
+# apply it
+data$hmaxCS<-c(center_scale(data$hmax))
+data$hmaxN<-c(normalise(data$hmax))
+
+
+```
+
+
+Create some N2pc variables
+```{r message=FALSE, warning=FALSE, include=FALSE, paged.print=FALSE}
+
+## create laterality index
+## so if positive, contra is more than ipsi
+data <-data %>% 
+        mutate(Latindex=ifelse(sidecue==0,RightN2pc-LeftN2pc,NA)) %>% 
+        mutate(Latindex=ifelse(sidecue==1,LeftN2pc-RightN2pc,Latindex))
+data <-data %>% 
+        mutate(LatindexC=ifelse(sidecue==0,RightN2pc-0,NA)) %>% 
+        mutate(LatindexC=ifelse(sidecue==1,LeftN2pc-0,LatindexC))
+  data <-data %>%       
+        mutate(LatindexI=ifelse(sidecue==1,RightN2pc-0,NA)) %>% 
+        mutate(LatindexI=ifelse(sidecue==0,LeftN2pc-0,LatindexI))
+  
+    data <-data %>%     #flip the invalid cue trials AS CONTRA BECOMES IPSI IN THESE   
+        mutate(LatindexI2=ifelse(cuecong==1,LatindexC,NA)) %>% 
+        mutate(LatindexI2=ifelse(cuecong==0,LatindexI,LatindexI2))
+    
+        data <-data %>%     #flip the invalid cue trials AS CONTRA BECOMES IPSI IN THESE   
+        mutate(LatindexC2=ifelse(cuecong==1,LatindexI,NA)) %>% 
+        mutate(LatindexC2=ifelse(cuecong==0,LatindexC,LatindexC2))
+        
+            
+  
+        data$LatindexNEW=data$LatindexC2-data$LatindexI2 
+
+        
+data$csLeftN2pc<-c(center_scale(data$LeftN2pc))
+data$csRightN2pc<-c(center_scale(data$RightN2pc))
+data$csAveN2pc<-c(center_scale(data$AveN2pc))
+data$csLatindex<-c(center_scale(data$Latindex))
+data$csLatindexNEW<-c(center_scale(data$LatindexNEW))
+hist(data$csLatindex)
+```
+
+
+
+Run some models
+```{r}
+
+
+#eeg model
+model.LItri2=lmer(csLatindexNEW ~ hmaxCS*cuecong2 +  (1|ParticipantPrivateID), data=data, REML = FALSE);
+
+
+```
+
+
+Paper results
+
+```{r message=TRUE, warning=FALSE, include=FALSE, results='hide'}
+
+
+summary(model.LItri2)
+anova(model.LItri2)
+summary(model.LItri2)$coef
+
+ 
+```

@@ -1,0 +1,104 @@
+---
+title: "predicting target cpp"
+author: "jb"
+date: "2024-05-26"
+output:
+  html_document: default
+  pdf_document: default
+files: '%PAPERSUBMISSION2'
+---
+
+
+
+Data extracted from fieldtrip response locked files:
+
+
+        cfg.channel     = {'CPz', 'Pz'}; 
+        cfg.baseline    = [-trial RT]; %%% baseline corrected to individual RT/ tri onset on trial by                                             trial basis
+        
+        
+```{r include=FALSE}
+rmarkdown::render("loadlibraries_s2.Rmd")
+
+
+rm(list = ls(pattern = "\\model"))  ###remove previous models
+rm(list = ls(pattern = "^data")) ### c
+rm(list = ls(pattern = "^mu")) ### c
+rm(list = ls(pattern = "^dp")) ### c
+rm(list = ls(pattern = "^plot")) ### c
+
+data<-readr::read_csv("targetCPP.csv") 
+
+factor(data$subj)
+
+colnames(data)
+
+#centre scale edgedis
+center_scale <- function(x) {scale(x, scale = TRUE)}
+data$edgedisCS<-c(center_scale(data$edgedis))
+
+#logRT
+data$logRT=log1p(data$responsetime)
+
+data$cstargetCPP<-c(center_scale(data$targetCPP))
+
+hist(data$cstargetCPP)
+data$cstargetCPP[data$cstargetCPP < -5 | data$cstargetCPP > 5] <- NaN[]
+```
+
+Target CPP from behavioural measures
+
+```{r}
+model.cpp=lmer(cstargetCPP ~ correct2+certain2+logRT+(1|subj), data=data, REML = FALSE);
+summary(model.cpp)
+anova(model.cpp)
+```
+
+target CPP from stimulus properties
+```{r}
+model.cpp2=lmer(cstargetCPP ~ edgedisCS*texrot+ (1|subj), data=data, REML = FALSE);
+summary(model.cpp2)
+anova(model.cpp2)
+
+```
+
+mediation submission 2
+```{r}
+pick=is.na(data$cstargetCPP)#pick data with CPP values
+dataC=data[!pick,]
+
+
+
+dataC$cer<-c(center_scale(dataC$certain))
+library(lmerTest) 
+pkg <- "package:lmerTest"
+detach(pkg, character.only = TRUE)  # remove else mediation won't work
+
+data$texrot=factor(data$texrot, levels=c("deg0","deg45","deg90"), order=FALSE)
+ fit.mediator=lmer(cer ~ edgedisCS*texrot  + (1|subj), data=dataC,REML = FALSE);
+ fit.totaleffect=lmer(cstargetCPP ~ edgedisCS*texrot     + (1|subj), data=dataC,REML = FALSE);
+ fit.dv=lmer(cstargetCPP ~ edgedisCS*texrot + cer    + (1|subj), data=dataC,REML = FALSE);
+ results = mediation::mediate(fit.mediator, fit.dv, treat="edgedisCS",   mediator="cer")
+  summary(results)
+  
+
+
+
+
+
+ library(lmerTest) # add back for full summaries/ anova info
+ fit.mediator2=lmer(cer ~ edgedisCS*texrot  + (1|subj), data=dataC,REML = FALSE);
+ fit.totaleffect2=lmer(cstargetCPP ~ edgedisCS*texrot     + (1|subj), data=dataC,REML = FALSE);
+ fit.dv2=lmer(cstargetCPP ~ edgedisCS*texrot + cer    + (1|subj), data=dataC,REML = FALSE);
+ 
+   
+summary(fit.mediator) #edgedis - path a
+anova(fit.mediator2)
+summary(fit.dv) # certain - path b
+anova(fit.dv2)
+summary(fit.totaleffect) # edgedis total effect - path c
+anova(fit.totaleffect2)
+
+```
+```
+

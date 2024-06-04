@@ -1,0 +1,54 @@
+---
+title: "required_libraries"
+author: "jac"
+date: "2024-05-26"
+output: html_document
+---
+
+
+load libraries
+```{r message=FALSE, warning=FALSE, include=FALSE, paged.print=FALSE, results='hide'}
+library(pbkrtest)
+library(lmerTest)
+library(tidyverse)
+library(nlme)
+library(lattice)
+library(stats)
+library(psycho)
+library(dplyr)
+library(ggpubr)
+library(sjstats)
+library(effects)
+library(sjPlot)
+library(webshot)
+library(psych)
+library(Hmisc)
+library(pastecs)
+library(performance)
+library(see)
+library(patchwork)
+library(openintro)
+library(e1071)
+library(ggplot2)
+library(interactions)
+library(plyr)
+library(car)
+library(mediation)
+library(insight)
+library(mclogit)
+library(mlogit)
+library(memisc)
+library(MuMIn)
+library(modelsummary)
+library(nnet)
+library(stargazer)
+library(splines2)
+library(splines)
+library(DescTools)
+library(flexplot)
+library(simr)
+library(pwr)
+library(questionr)
+
+```
+
